@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TikTok | Get Coins</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4CAF50">
+
+<!-- iOS support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<!-- Service Worker Registration at the end of body -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('Service Worker Registered'))
+    .catch(err => console.log('Service Worker registration failed:', err));
+}
+</script>
+<style>
+
+  body {
+    margin: 0;
+    font-family: "Inter", Arial, sans-serif;
+    background-color: #fff;
+    color: #111;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eee;
+  }
+
+  header img {
+    height: 26px;
+    margin-right: 8px;
+  }
+
+  header h1 {
+    font-size: 18px;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .balance {
+    text-align: center;
+    background-color: #fff5f7;
+    border-bottom: 1px solid #eee;
+    padding: 14px;
+    font-weight: 600;
+    color: #ff3b5c;
+    font-size: 16px;
+  }
+
+  .balance img {
+    width: 22px;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  .container {
+    padding: 16px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .note {
+    color: #e53935;
+    font-size: 14px;
+    margin-bottom: 18px;
+  }
+
+  .username {
+    margin-bottom: 18px;
+  }
+
+  .username label {
+    font-size: 15px;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .username input {
+    width: 100%;
+    padding: 10px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+  }
+
+  .coins {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .coin {
+    background-color: #fafafa;
+    border: 1.5px solid #f0f0f0;
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .coin:hover {
+    border-color: #ff3b5c;
+  }
+
+  .coin.selected {
+    border-color: #ff3b5c;
+    background-color: #fff5f7;
+  }
+
+  .coin .icon img {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 6px;
+  }
+
+  .coin .amount {
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .coin .price {
+    color: #666;
+    font-size: 13px;
+  }
+
+  .offer {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .payment {
+    margin-top: 24px;
+  }
+
+  .payment h2 {
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 8px;
+  }
+
+  .payment-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .method {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    cursor: pointer;
+  }
+
+  .method:hover {
+    border-color: #ff3b5c;
+  }
+
+  .method img {
+    height: 30px;
+  }
+
+  .total {
+    margin-top: 20px;
+    font-weight: 600;
+    color: #111;
+    text-align: right;
+    font-size: 15px;
+  }
+
+  .pay-btn {
+    background-color: #ff3b5c;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    margin-top: 14px;
+    cursor: pointer;
+  }
+
+  .pay-btn:hover {
+    background-color: #e73553;
+  }
+
+  /* Popups */
+  .popup {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .popup-content {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    text-align: center;
+    width: 85%;
+    max-width: 320px;
+  }
+
+  .popup-content input {
+    width: 100%; 
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+  }
+
+  .close-btn, .confirm-btn {
+    margin-top: 20px;
+    background-color: #ff3b5c;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  .confirm-btn {
+    background-color: #28a745;
+  }
+
+  /* Loading Spinner */
+  .loader {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #ff3b5c;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 12px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <img src="TK.png" alt="TikTok Logo" />
+    <h1>Get Coins</h1>
+  </header>
+
+
+  <div class="container">
+    <div class="note">Recharge now to save 25% with lower service fees.</div>
+
+    <div class="username">
+      <label for="username">Enter TikTok Username</label>
+      <input type="text" id="username" placeholder="@username" />
+    </div>
+
+    <div class="coins" id="coinContainer">
+      <div class="coin selected">
+        <div class="icon"><img src="CN.webp" alt="Coin"></div>
+        <div class="amount">30</div>
+        <div class="price">$0.30</div>
+      </div>
+      <div class="coin">
+        <div class="icon"><img src="CN.webp" alt="Coin"></div>
+        <div class="amount">350</div>
+        <div class="price">$3.50</div>
+      </div>
+      <div class="coin">
+        <div class="icon"><img src="CN.webp" alt="Coin"></div>
+        <div class="amount">700</div>
+        <div class="price">$7.00</div>
+      </div>
+      <div class="coin">
+        <div class="icon"><img src="CN.webp" alt="Coin"></div>
+        <div class="amount">99999</div>
+        <div class="price">$1,270.00</div>
+      </div>
+      <div class="coin">
+        <div class="icon"><img src="CN.webp" alt="Coin"></div>
+        <div class="amount">Custom amount</div>
+      </div>
+    </div>
+
+    <div class="offer">💰 Special offer - Get 5% cashback on your next order</div>
+
+    <div class="payment">
+      <h2>Payment Method</h2>
+      <div class="payment-methods">
+        <div class="method"><img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg"/> Visa / Mastercard</div>
+        <div class="method"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"/> PayPal</div>
+                
+      </div>
+    </div>
+
+    <div class="total" id="totalDisplay">Total: 30 coins — $0.30</div>
+
+    <button class="pay-btn" id="payButton">Pay</button>
+  </div>
+
+  <!-- Custom Amount Popup -->
+  <div class="popup" id="customPopup">
+    <div class="popup-content">
+      <h2 style="margin-top: 0; color: #333;">Enter Custom Amount</h2>
+      <p style="color: #666; margin-bottom: 15px;">Please enter the number of coins you want to purchase</p>
+      <div style="position: relative; margin: 20px 0;">
+        <input type="number" id="customCoins" placeholder="0" style="
+          width: 80%;
+          padding: 15px 20px;
+          border: 2px solid #ddd;
+          border-radius: 12px;
+          font-size: 20px;
+          text-align: center;
+          font-weight: 600;
+          outline: none;
+          transition: border-color 0.3s;
+        "/>
+        <div style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #999; font-weight: 500;">coins</div>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button class="confirm-btn" id="confirmCustom" style="flex: 1; padding: 12px;">Confirm</button>
+        <button class="close-btn" id="cancelCustom" style="flex: 1; padding: 12px;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Processing Popup -->
+  <div class="popup" id="processingPopup">
+    <div class="popup-content">
+      <div class="loader"></div>
+      <h2>Processing Payment...</h2>
+      <p>Please wait while we complete your transaction.</p>
+    </div>
+  </div>
+
+  <!-- Success Popup -->
+  <div class="popup" id="successPopup">
+    <div class="popup-content">
+            <img src="CHKK.png" alt="Success" style="width: 90px; height: 90px; margin-bottom: 15px;" />
+      <h2 style="margin-top: 0;">Payment Successful!</h2>
+      <p id="successMessage" style="font-size: 16px; line-height: 1.5;"></p>
+      <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
+        <p style="margin: 0; font-weight: 500;">Transaction Details</p>
+        <p style="margin: 5px 0; font-size: 14px;">Amount: <span id="transactionAmount" style="font-weight: 600;">30 coins</span></p>
+        <p style="margin: 5px 0; font-size: 14px;">Recipient: <span id="transactionRecipient" style="font-weight: 600;">@username</span></p>
+        <p style="margin: 5px 0; font-size: 14px;">Total Paid: <span id="transactionTotal" style="font-weight: 600;">$0.30</span></p>
+        <p style="margin: 5px 0; font-size: 14px;">Transaction ID: <span id="transactionId" style="font-weight: 600;">#TK-123456789</span></p>
+      </div>
+      <button class="close-btn" id="closeSuccess">Close</button>
+    </div>
+  </div>
+
+<script>
+  const coins = document.querySelectorAll(".coin");
+  const totalDisplay = document.getElementById("totalDisplay");
+  const customPopup = document.getElementById("customPopup");
+  const confirmCustom = document.getElementById("confirmCustom");
+  const cancelCustom = document.getElementById("cancelCustom");
+  const payButton = document.getElementById("payButton");
+  const successPopup = document.getElementById("successPopup");
+  const closeSuccess = document.getElementById("closeSuccess");
+  const successMessage = document.getElementById("successMessage");
+  const processingPopup = document.getElementById("processingPopup");
+
+  let selectedCoins = 30;
+  let selectedPrice = "$0.30";
+
+  coins.forEach((coin) => {
+    coin.addEventListener("click", () => {
+      coins.forEach((c) => c.classList.remove("selected"));
+      coin.classList.add("selected");
+      const amount = coin.querySelector(".amount").innerText;
+      const price = coin.querySelector(".price")
+        ? coin.querySelector(".price").innerText
+        : "$0.00";
+      if (amount === "Custom amount") {
+        customPopup.style.display = "flex";
+      } else {
+        selectedCoins = amount;
+        selectedPrice = price;
+        totalDisplay.textContent = `Total: ${amount} coins — ${price}`;
+      }
+    });
+  });
+
+  confirmCustom.addEventListener("click", () => {
+    const coinsVal = document.getElementById("customCoins").value;
+    if (!coinsVal || coinsVal <= 0) {
+      alert("Please enter a valid coin amount.");
+      return;
+    }
+    const priceVal = (coinsVal / 100).toFixed(2);
+    selectedCoins = coinsVal;
+    selectedPrice = `$${priceVal}`;
+    totalDisplay.textContent = `Total: ${coinsVal} coins — ${selectedPrice}`;
+    customPopup.style.display = "none";
+  });
+
+  cancelCustom.addEventListener("click", () => {
+    customPopup.style.display = "none";
+  });
+
+  payButton.addEventListener("click", () => {
+    const username = document.getElementById("username").value.trim();
+    if (!username) {
+      alert("Please enter a TikTok username first.");
+      return;
+    }
+    processingPopup.style.display = "flex";
+    setTimeout(() => {
+      processingPopup.style.display = "none";
+      successMessage.textContent = `You sent ${selectedCoins} coins to ${username} for ${selectedPrice}.`;
+      
+      // Update transaction details
+      document.getElementById("transactionAmount").textContent = `${selectedCoins} coins`;
+      document.getElementById("transactionRecipient").textContent = username;
+      document.getElementById("transactionTotal").textContent = selectedPrice;
+      document.getElementById("transactionId").textContent = `#TK-${Math.floor(Math.random() * 1000000000)}`;
+      
+      successPopup.style.display = "flex";
+    }, 2500);
+  });
+
+  closeSuccess.addEventListener("click", () => {
+    successPopup.style.display = "none";
+  });
+</script>
+</body>
+</html>
